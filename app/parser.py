@@ -28,11 +28,10 @@ def _normalize_bbox(value) -> list[float] | None:
     return None
 
 
-def _normalize_brace(raw: dict) -> dict:
+def _normalize_brace(raw: dict) -> dict | None:
     cls = raw.get("class", "")
     if cls not in VALID_BRACE_CLASSES:
-        cls = "brace_mat" if "mat" in cls else "brace_l_bracket"
-        cls = cls if cls in VALID_BRACE_CLASSES else "brace_l_bracket"
+        return None
 
     install_quality = raw.get("install_quality", "unverified")
     if install_quality not in VALID_INSTALL_QUALITIES:
@@ -55,7 +54,13 @@ def _normalize_furniture(raw: dict) -> dict:
     if profile not in {None, "tall", "chest"}:
         profile = None
 
-    braces = [_normalize_brace(b) for b in raw.get("braces", []) if isinstance(b, dict)]
+    braces = [
+        brace
+        for b in raw.get("braces", [])
+        if isinstance(b, dict)
+        for brace in [_normalize_brace(b)]
+        if brace is not None
+    ]
 
     return {
         "class": cls,

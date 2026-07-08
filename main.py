@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -77,11 +78,11 @@ async def diagnose_endpoint(
     _ = structure
 
     try:
-        detection = vision_detect(image_bytes, image.content_type)
+        detection = await asyncio.to_thread(vision_detect, image_bytes, image.content_type)
     except VisionDetectionError:
         return JSONResponse(status_code=502, content={"status": "api_error"})
-    except RuntimeError as exc:
+    except RuntimeError:
         logger.exception("Vision configuration error")
-        return JSONResponse(status_code=502, content={"status": "api_error", "detail": str(exc)})
+        return JSONResponse(status_code=502, content={"status": "api_error"})
 
     return diagnose(detection, shindo, soil, floor_no, base_isolated)
