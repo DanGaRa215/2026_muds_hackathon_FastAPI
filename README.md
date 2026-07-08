@@ -17,7 +17,7 @@ uv sync
 
 # 2. 環境変数
 cp .env.example .env
-# .env を編集して APP_SHARED_SECRET / ANTHROPIC_API_KEY を設定
+# .env を編集して APP_SHARED_SECRET / OPENROUTER_API_KEY を設定
 
 # 3. 起動
 uv run uvicorn main:app --reload --host 0.0.0.0 --port 8000
@@ -42,8 +42,9 @@ uv run pytest
 | 変数 | 必須 | 説明 |
 |---|---|---|
 | `APP_SHARED_SECRET` | ✅ | Flutter から送る `X-App-Key` と照合 |
-| `ANTHROPIC_API_KEY` | ✅ | Anthropic Vision API キー |
-| `ANTHROPIC_MODEL` | — | 既定: `claude-sonnet-4-6` |
+| `OPENROUTER_API_KEY` | ✅ | OpenRouter API キー |
+| `OPENROUTER_MODEL` | — | 既定: `anthropic/claude-sonnet-4` |
+| `OPENROUTER_BASE_URL` | — | 既定: `https://openrouter.ai/api/v1` |
 | `LANGSMITH_TRACING` | — | `true` のときのみ LangSmith 有効 |
 | `LANGSMITH_API_KEY` | — | LangSmith トレーシング用 |
 | `LANGSMITH_PROJECT` | — | 既定: `furniture-diagnosis` |
@@ -75,7 +76,7 @@ curl -X POST http://localhost:8000/diagnose \
 app/
   constants.py   # 係数テーブル・プロンプト
   engine.py      # ルールベース判定（テスト可能）
-  vision.py      # LangChain + Anthropic Vision
+  vision.py      # OpenRouter Vision (LangChain)
   suggestions.py # 改善提案生成
   parser.py      # LLM JSON 正規化
   auth.py        # X-App-Key 検証

@@ -19,8 +19,9 @@ Render の **Environment** タブで設定:
 | Key | 必須 | 例 |
 |---|---|---|
 | `APP_SHARED_SECRET` | ✅ | チーム共有シークレット |
-| `ANTHROPIC_API_KEY` | ✅ | Anthropic API キー |
-| `ANTHROPIC_MODEL` | — | `claude-sonnet-4-6` |
+| `OPENROUTER_API_KEY` | ✅ | OpenRouter API キー |
+| `OPENROUTER_MODEL` | — | `anthropic/claude-sonnet-4` |
+| `OPENROUTER_BASE_URL` | — | `https://openrouter.ai/api/v1` |
 | `LANGSMITH_TRACING` | — | `false` |
 | `LANGSMITH_API_KEY` | — | （任意） |
 | `LANGSMITH_PROJECT` | — | `furniture-diagnosis` |
@@ -54,7 +55,7 @@ curl https://<your-service>.onrender.com/health
 
 ## 6. セキュリティチェックリスト
 
-- [ ] Anthropic Console で Spend Limit を設定
+- [ ] OpenRouter でクレジット上限・利用制限を設定
 - [ ] `APP_SHARED_SECRET` をチーム外に公開しない
 - [ ] ハッカソン終了後にキーをローテーション
 
