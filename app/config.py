@@ -4,6 +4,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+
 
 def get_app_shared_secret() -> str:
     secret = os.environ.get("APP_SHARED_SECRET")
@@ -12,12 +14,16 @@ def get_app_shared_secret() -> str:
     return secret
 
 
-def get_anthropic_api_key() -> str | None:
-    return os.environ.get("ANTHROPIC_API_KEY")
+def get_openrouter_api_key() -> str | None:
+    return os.environ.get("OPENROUTER_API_KEY")
 
 
-def get_anthropic_model() -> str:
-    return os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-4-6")
+def get_openrouter_model() -> str:
+    return os.environ.get("OPENROUTER_MODEL", "anthropic/claude-sonnet-4")
+
+
+def get_openrouter_base_url() -> str:
+    return os.environ.get("OPENROUTER_BASE_URL", OPENROUTER_BASE_URL)
 
 
 def configure_langsmith() -> None:

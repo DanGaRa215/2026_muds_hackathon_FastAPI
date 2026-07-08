@@ -1,5 +1,3 @@
-import io
-
 import pytest
 from fastapi.testclient import TestClient
 
@@ -9,7 +7,7 @@ from main import app
 @pytest.fixture
 def client(monkeypatch):
     monkeypatch.setenv("APP_SHARED_SECRET", "test-secret")
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-anthropic-key")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-openrouter-key")
     return TestClient(app)
 
 

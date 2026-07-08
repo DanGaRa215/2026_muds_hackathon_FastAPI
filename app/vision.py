@@ -1,12 +1,15 @@
 import base64
 import json
 import logging
-import os
 
-from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage
+from langchain_openai import ChatOpenAI
 
-from app.config import get_anthropic_api_key, get_anthropic_model
+from app.config import (
+    get_openrouter_api_key,
+    get_openrouter_base_url,
+    get_openrouter_model,
+)
 from app.constants import DETECTION_PROMPT
 from app.parser import normalize_detection, parse_json_response
 
@@ -17,14 +20,15 @@ class VisionDetectionError(Exception):
     """Raised when vision detection fails after retries."""
 
 
-def _build_model() -> ChatAnthropic:
-    api_key = get_anthropic_api_key()
+def _build_model() -> ChatOpenAI:
+    api_key = get_openrouter_api_key()
     if not api_key:
-        raise RuntimeError("ANTHROPIC_API_KEY environment variable is required")
+        raise RuntimeError("OPENROUTER_API_KEY environment variable is required")
 
-    return ChatAnthropic(
-        model=get_anthropic_model(),
+    return ChatOpenAI(
+        model=get_openrouter_model(),
         api_key=api_key,
+        base_url=get_openrouter_base_url(),
         temperature=0.1,
         max_tokens=1024,
     )
@@ -40,7 +44,7 @@ def _media_type(image_bytes: bytes, content_type: str | None) -> str:
     return "image/jpeg"
 
 
-def _invoke_once(model: ChatAnthropic, image_bytes: bytes, media_type: str) -> dict:
+def _invoke_once(model: ChatOpenAI, image_bytes: bytes, media_type: str) -> dict:
     b64 = base64.b64encode(image_bytes).decode()
     message = HumanMessage(
         content=[
