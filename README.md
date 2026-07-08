@@ -55,12 +55,12 @@ uv run pytest
 curl -X POST http://localhost:8000/diagnose \
   -H "X-App-Key: your-secret" \
   -F "image=@/path/to/photo.jpg" \
-  -F "shindo=s6weak" \
-  -F "soil=normal" \
   -F "structure=wood" \
   -F "floor_no=1" \
   -F "base_isolated=false"
 ```
+
+想定震度・土質は API 入力から廃止し、サーバー側で既定値（震度6弱・普通）を使用します。
 
 ## レスポンス状態
 

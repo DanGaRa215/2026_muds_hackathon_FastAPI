@@ -13,8 +13,6 @@ def client(monkeypatch):
 
 def _multipart_payload(**overrides):
     data = {
-        "shindo": "s6weak",
-        "soil": "normal",
         "structure": "wood",
         "floor_no": "1",
         "base_isolated": "false",

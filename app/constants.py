@@ -46,6 +46,10 @@ VALID_SHINDO = {"s5weak", "s5strong", "s6weak", "s6strong", "s7"}
 VALID_SOIL = {"hard", "normal", "soft"}
 VALID_STRUCTURE = {"wood", "rc", "steel"}
 
+# API入力廃止時の既定値 [DESIGN]
+DEFAULT_SHINDO = "s6weak"
+DEFAULT_SOIL = "normal"
+
 UNKNOWN_DISCLAIMERS = [
     "収納物の重さ・重心",
     "壁・天井の下地強度",
