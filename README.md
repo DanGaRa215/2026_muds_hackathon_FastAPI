@@ -43,7 +43,7 @@ uv run pytest
 |---|---|---|
 | `APP_SHARED_SECRET` | ✅ | Flutter から送る `X-App-Key` と照合 |
 | `OPENROUTER_API_KEY` | ✅ | OpenRouter API キー |
-| `OPENROUTER_MODEL` | — | 既定: `anthropic/claude-sonnet-4` |
+| `OPENROUTER_MODEL` | — | 既定: `qwen/qwen3-vl-32b-instruct` |
 | `OPENROUTER_BASE_URL` | — | 既定: `https://openrouter.ai/api/v1` |
 | `LANGSMITH_TRACING` | — | `true` のときのみ LangSmith 有効 |
 | `LANGSMITH_API_KEY` | — | LangSmith トレーシング用 |

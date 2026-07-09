@@ -19,7 +19,7 @@ def get_openrouter_api_key() -> str | None:
 
 
 def get_openrouter_model() -> str:
-    return os.environ.get("OPENROUTER_MODEL", "anthropic/claude-sonnet-4")
+    return os.environ.get("OPENROUTER_MODEL", "qwen/qwen3-vl-32b-instruct")
 
 
 def get_openrouter_base_url() -> str:

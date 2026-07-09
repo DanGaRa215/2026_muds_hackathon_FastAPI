@@ -20,7 +20,7 @@ Render の **Environment** タブで設定:
 |---|---|---|
 | `APP_SHARED_SECRET` | ✅ | チーム共有シークレット |
 | `OPENROUTER_API_KEY` | ✅ | OpenRouter API キー |
-| `OPENROUTER_MODEL` | — | `anthropic/claude-sonnet-4` |
+| `OPENROUTER_MODEL` | — | `qwen/qwen3-vl-32b-instruct` |
 | `OPENROUTER_BASE_URL` | — | `https://openrouter.ai/api/v1` |
 | `LANGSMITH_TRACING` | — | `false` |
 | `LANGSMITH_API_KEY` | — | （任意） |
