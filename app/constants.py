@@ -42,6 +42,18 @@ VALID_INSTALL_QUALITIES = {
     "unverified",
 }
 
+VALID_IMAGE_ISSUES = {
+    "too_dark",
+    "furniture_cut_off",
+    "no_furniture",
+    "blurry",
+}
+
+WARDROBE_PROFILES = {None, "tall", "chest"}
+
+# v2.4: クライアント由来 detection JSON の長さ上限 [DESIGN]
+MAX_DETECTION_JSON_BYTES = 64 * 1024
+
 VALID_SHINDO = {"s5weak", "s5strong", "s6weak", "s6strong", "s7"}
 VALID_SOIL = {"hard", "normal", "soft"}
 VALID_STRUCTURE = {"wood", "rc", "steel"}
