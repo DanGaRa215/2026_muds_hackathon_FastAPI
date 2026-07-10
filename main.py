@@ -66,9 +66,6 @@ async def diagnose_endpoint(
     if len(image_bytes) > MAX_IMAGE_BYTES:
         raise HTTPException(status_code=413, detail="image too large")
 
-    # structure is reserved for future rule extensions.
-    _ = structure
-
     try:
         detection = await asyncio.to_thread(vision_detect, image_bytes, image.content_type)
     except VisionDetectionError:
@@ -77,4 +74,11 @@ async def diagnose_endpoint(
         logger.exception("Vision configuration error")
         return JSONResponse(status_code=502, content={"status": "api_error"})
 
-    return diagnose(detection, DEFAULT_SHINDO, DEFAULT_SOIL, floor_no, base_isolated)
+    return diagnose(
+        detection,
+        DEFAULT_SHINDO,
+        DEFAULT_SOIL,
+        structure,
+        floor_no,
+        base_isolated,
+    )
