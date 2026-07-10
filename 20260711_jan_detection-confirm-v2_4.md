@@ -1,5 +1,7 @@
 # 20260711_jan_detection-confirm-v2_4 — FastAPI 作業記録
 
+**PRタイトル:** `v2.4: 検出確認用に /detect 分割と detection JSON 診断を追加`
+
 ブランチ: `20260711_jan_detection-confirm-v2_4`  
 前提: v2.3（`primary_index` / 平易化 `reason_chain` / `sources[]`）マージ済み
 
