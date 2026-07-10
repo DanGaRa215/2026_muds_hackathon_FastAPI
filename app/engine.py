@@ -19,6 +19,7 @@ from app.constants import (
     Shindo,
 )
 from app.display import FURNITURE_TITLES, build_display
+from app.sources import build_sources
 from app.suggestions import build_suggestions
 
 # structure は現行v1.0係数表に対応する出典値が存在しないためリスク計算に未使用。
@@ -30,6 +31,14 @@ SHINDO_LABELS = {
     Shindo.s6weak: "震度6弱",
     Shindo.s6strong: "震度6強",
     Shindo.s7: "震度7",
+}
+
+SHINDO_JA = {
+    Shindo.s5weak: "5弱",
+    Shindo.s5strong: "5強",
+    Shindo.s6weak: "6弱",
+    Shindo.s6strong: "6強",
+    Shindo.s7: "7",
 }
 
 PHYSICS_TITLES = {
@@ -55,6 +64,106 @@ BRACE_FACTOR_SUFFIX = {
     "brace_belt": "belt",
     "brace_mat": "mat",
 }
+
+LABEL_LOOSE = "固定具に緩みが見られるため、低減効果を見込んでいません。"
+LABEL_WRONG_POSITION = "固定具の取付位置が適切でないため、低減効果を見込んでいません。"
+LABEL_UNVERIFIED = "写真から固定具の設置状態を確認できなかったため、低減効果を見込んでいません。"
+
+
+def _shindo_ja(shindo_enum: Shindo) -> str:
+    return SHINDO_JA[shindo_enum]
+
+
+def _physics_track_label(
+    shindo_enum: Shindo,
+    a_eff: int,
+    furniture_ja: str,
+    a0: int,
+    ar50: int,
+    physics_level: str,
+) -> str:
+    margin = round(SAFETY_FACTOR * a0, 1)
+    shindo = _shindo_ja(shindo_enum)
+    intro = (
+        f"想定震度{shindo}のとき、床の揺れの強さは約{a_eff}ガル"
+        f"（1ガル＝1cm/s²、気象庁換算）です。"
+    )
+    if physics_level == "low":
+        return (
+            f"{intro}{furniture_ja}が倒れ始める目安は約{a0}ガル（国総研データ）で、"
+            f"安全側の余裕を見た基準値{margin}ガルも下回っているため「低」と判定しました。"
+        )
+    if physics_level == "mid":
+        return (
+            f"{intro}{furniture_ja}が倒れ始める目安は約{a0}ガル（国総研データ）。"
+            f"まだ届いていませんが、安全側の余裕を見た基準値{margin}ガル"
+            f"を超えているため「中」と判定しました。"
+        )
+    return (
+        f"{intro}これは{furniture_ja}のうち約半数が倒れるとされる目安"
+        f"{ar50}ガル（国総研データ）以上のため、「高」と判定しました。"
+    )
+
+
+def _physics_level_name(a_eff: int, a0: int, ar50: int) -> str:
+    if a_eff < SAFETY_FACTOR * a0:
+        return "low"
+    if a_eff < ar50:
+        return "mid"
+    return "high"
+
+
+def _stat_track_label(furniture_ja: str, rate: float) -> str:
+    return (
+        f"[Sトラック] 東京消防庁が熊本地震後に行った実態調査では、"
+        f"対策していない{furniture_ja}の{rate}%が転倒などの被害を受けています。"
+        f"この割合を出発点として、想定震度に応じて評価を調整しています。"
+    )
+
+
+def _shindo_shift_label(shindo_enum: Shindo, shift: int) -> str:
+    shindo = _shindo_ja(shindo_enum)
+    n = abs(shift)
+    if shift > 0:
+        return (
+            f"想定震度{shindo}は、調査地域の揺れ（震度6強相当）より強いため、"
+            f"評価を{n}段階上げました。"
+        )
+    return (
+        f"想定震度{shindo}は、調査地域の揺れ（震度6強相当）より弱いため、"
+        f"評価を{n}段階下げました。"
+    )
+
+
+def _collect_item_sources(
+    physics_key: str | None,
+    modifiers: list[dict],
+    suggestions: list[dict],
+    *,
+    out_of_scope: bool = False,
+) -> set[str]:
+    if out_of_scope:
+        return set()
+    used: set[str] = {"JMA"}
+    if physics_key:
+        used.add("NILIM")
+    modifier_factors = {m.get("factor") for m in modifiers}
+    if "track_stat" in modifier_factors:
+        used.add("TFD-H")
+    if "fix_combo_correct" in modifier_factors:
+        used.add("TFD-M")
+    if modifier_factors & {
+        "fix_l_bracket_correct",
+        "fix_tension_rod_correct",
+        "fix_stopper_correct",
+        "fix_belt_correct",
+    }:
+        used.add("TFD-H")
+    for suggestion in suggestions:
+        source = suggestion.get("source")
+        if source in {"TFD-H", "TFD-M"}:
+            used.add(source)
+    return used
 
 
 def resolve_physics_key(furniture: dict) -> str | None:
@@ -84,7 +193,11 @@ def _shift_from_correct_like(braces: list[dict]) -> tuple[int, list[dict[str, An
             {
                 "factor": "fix_combo_correct",
                 "shift": COMBO_SHIFT,
-                "label": "2種類の固定具の併用で大幅に低減（参考値）",
+                "label": (
+                    "2種類以上の固定具が併用されています。"
+                    "実態調査では転倒が確認されていません"
+                    "（n=8のため参考値・東京消防庁マンション調査）。"
+                ),
             }
         )
         return COMBO_SHIFT, modifiers
@@ -95,11 +208,19 @@ def _shift_from_correct_like(braces: list[dict]) -> tuple[int, list[dict[str, An
         suffix = BRACE_FACTOR_SUFFIX.get(brace_class, brace_class.removeprefix("brace_"))
         label = BRACE_LABELS.get(brace_class, brace_class)
         if shift != 0:
+            if brace_class == "brace_l_bracket":
+                mod_label = (
+                    "L字金具が適切に設置されています。"
+                    "実態調査では転倒率が33.5%から8.9%に下がっています"
+                    "（東京消防庁・戸建調査）。"
+                )
+            else:
+                mod_label = f"{label}が適切に設置されているため、評価を1段階下げました。"
             modifiers.append(
                 {
                     "factor": f"fix_{suffix}_correct",
                     "shift": shift,
-                    "label": f"{label}（適切に設置）で1段階低減",
+                    "label": mod_label,
                 }
             )
         return shift, modifiers
@@ -133,19 +254,18 @@ def fixing_shift_of(braces: list[dict]) -> tuple[int, list[dict[str, Any]]]:
                 {
                     "factor": f"fix_{suffix}_loose",
                     "shift": shift,
-                    "label": f"{BRACE_LABELS.get('brace_' + suffix, suffix)}に緩みがあるため低減を見込めません",
+                    "label": LABEL_LOOSE,
                 }
             )
 
     for brace in loose:
         if correct:
             suffix = BRACE_FACTOR_SUFFIX.get(brace["class"], brace["class"].removeprefix("brace_"))
-            label = BRACE_LABELS.get(brace["class"], brace["class"])
             modifiers.append(
                 {
                     "factor": f"fix_{suffix}_loose",
                     "shift": 0,
-                    "label": f"{label}に緩みがあるため低減を見込めません",
+                    "label": LABEL_LOOSE,
                 }
             )
 
@@ -154,7 +274,7 @@ def fixing_shift_of(braces: list[dict]) -> tuple[int, list[dict[str, Any]]]:
             {
                 "factor": "fix_wrong_position",
                 "shift": 0,
-                "label": "取付位置が不適切なため低減を見込めません",
+                "label": LABEL_WRONG_POSITION,
             }
         )
 
@@ -163,7 +283,7 @@ def fixing_shift_of(braces: list[dict]) -> tuple[int, list[dict[str, Any]]]:
             {
                 "factor": "fix_unverified",
                 "shift": 0,
-                "label": "写真から設置状態を確認できないため低減を見込めません",
+                "label": LABEL_UNVERIFIED,
             }
         )
 
@@ -209,10 +329,17 @@ def diagnose(
 
     shindo_enum = Shindo(shindo)
     results: list[dict] = []
+    used_sources: set[str] = set()
 
     for furniture in furniture_list:
         if furniture["class"] == "furniture_other":
             display = build_display("furniture_other", "low", "topple", [])
+            other_suggestions = build_suggestions(
+                furniture, [], 0, "topple", floor_no
+            )
+            used_sources |= _collect_item_sources(
+                None, [], other_suggestions, out_of_scope=True
+            )
             results.append(
                 {
                     "furniture": furniture,
@@ -220,9 +347,7 @@ def diagnose(
                     "risk": None,
                     "display": display,
                     "warnings": [],
-                    "suggestions": build_suggestions(
-                        furniture, [], 0, "topple", floor_no
-                    ),
+                    "suggestions": other_suggestions,
                     "reference_only": True,
                     "out_of_scope": True,
                 }
@@ -238,19 +363,15 @@ def diagnose(
         if physics_key:
             a0, ar50 = PHYSICS_TRACK[physics_key]
             a_eff = BASE_GAL[shindo_enum]
-            level = 0 if a_eff < SAFETY_FACTOR * a0 else (1 if a_eff < ar50 else 2)
+            physics_level = _physics_level_name(a_eff, a0, ar50)
+            level = {"low": 0, "mid": 1, "high": 2}[physics_level]
             title = PHYSICS_TITLES.get(physics_key, physics_key)
-            if a_eff >= SAFETY_FACTOR * a0:
-                compare = "上回っています" if a_eff >= a0 else "基準付近です"
-            else:
-                compare = "下回っています"
             modifiers.append(
                 {
                     "factor": "track_physics",
                     "shift": 0,
-                    "label": (
-                        f"想定{SHINDO_LABELS[shindo_enum]}の床応答{a_eff}galが、"
-                        f"{title}の転倒限界{a0}galを{compare}"
+                    "label": _physics_track_label(
+                        shindo_enum, a_eff, title, a0, ar50, physics_level
                     ),
                 }
             )
@@ -262,18 +383,17 @@ def diagnose(
                 {
                     "factor": "track_stat",
                     "shift": 0,
-                    "label": f"調査での転倒率{rate}%（{title}）を基準にしています",
+                    "label": _stat_track_label(title, rate),
                 }
             )
             shift = STAT_SHINDO_SHIFT[shindo_enum]
             if shift != 0:
                 level += shift
-                direction = "引き上げ" if shift > 0 else "引き下げ"
                 modifiers.append(
                     {
                         "factor": "shindo_shift",
                         "shift": shift,
-                        "label": f"想定{SHINDO_LABELS[shindo_enum]}のため1段階{direction}",
+                        "label": _shindo_shift_label(shindo_enum, shift),
                     }
                 )
 
@@ -285,7 +405,7 @@ def diagnose(
                 {
                     "factor": "soil_soft",
                     "shift": SOIL_SHIFT[soil],
-                    "label": "軟弱地盤のため1段階引き上げ",
+                    "label": "地盤が軟弱なため、揺れが増幅されると考え評価を1段階上げました。",
                 }
             )
 
@@ -295,7 +415,7 @@ def diagnose(
                 {
                     "factor": "high_floor",
                     "shift": 1,
-                    "label": "11階以上のため1段階引き上げ",
+                    "label": "11階以上では揺れが大きくなるため、評価を1段階上げました。",
                 }
             )
 
@@ -310,7 +430,7 @@ def diagnose(
                 {
                     "factor": "clamp",
                     "shift": 0,
-                    "label": "これ以上は下がりません（3段階評価の下限/上限）",
+                    "label": "評価は3段階のため、これ以上は変わりません。",
                 }
             )
 
@@ -322,7 +442,10 @@ def diagnose(
                 {
                     "factor": "base_isolated_cap",
                     "shift": -1,
-                    "label": "免震構造のため、転倒ではなく移動のリスクとして評価しています",
+                    "label": (
+                        "免震構造のため、倒れるより床を滑って移動する"
+                        "リスクとして評価しています。"
+                    ),
                 }
             )
 
@@ -361,6 +484,7 @@ def diagnose(
             risk_type,
             floor_no,
         )
+        used_sources |= _collect_item_sources(physics_key, modifiers, suggestions)
 
         results.append(
             {
@@ -395,6 +519,8 @@ def diagnose(
             "floor_no": floor_no,
             "base_isolated": base_isolated,
         },
+        "primary_index": 0,
         "results": results,
         "unknowns": UNKNOWN_DISCLAIMERS,
+        "sources": build_sources(used_sources),
     }
